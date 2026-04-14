@@ -1,4 +1,4 @@
-package com.github.mrmaj73.supernovatoolsplugin
+package com.digikala.supernovatools
 
 import com.intellij.DynamicBundle
 import org.jetbrains.annotations.NonNls

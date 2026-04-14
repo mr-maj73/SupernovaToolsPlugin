@@ -1,6 +1,6 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
-    <id>com.github.mrmaj73.supernovatoolsplugin</id>
+    <id>com.digikala.supernovatools</id>
     <name>SupernovaToolsPlugin</name>
     <vendor>mr-maj73</vendor>
 
@@ -9,7 +9,7 @@
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.mrmaj73.supernovatoolsplugin.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
-        <postStartupActivity implementation="com.github.mrmaj73.supernovatoolsplugin.startup.MyProjectActivity" />
+        <toolWindow factoryClass="com.digikala.supernovatools.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
+        <postStartupActivity implementation="com.digikala.supernovatools.startup.MyProjectActivity" />
     </extensions>
 </idea-plugin>

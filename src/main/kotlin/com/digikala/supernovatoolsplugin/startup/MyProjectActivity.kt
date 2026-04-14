@@ -1,4 +1,4 @@
-package com.github.mrmaj73.supernovatoolsplugin.startup
+package com.digikala.supernovatools.startup
 
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
