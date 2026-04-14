@@ -57,7 +57,7 @@ build:gradle:
   rules:
     - when: on_success
     - when: manual
-      allow_uncerged_branches: true
+      
 
 # Test stage - Run all tests
 test:unit:
@@ -92,7 +92,7 @@ test:ui:
     expire_in: 1 week
   rules:
     - when: on_success
-      allow_uncerged_branches: true
+      
 
 # Package stage - Build plugin artifact
 package:plugin:
@@ -110,7 +110,7 @@ package:plugin:
     name: plugin-artifacts-$CI_COMMIT_REF_SLUG
   rules:
     - when: on_success
-      allow_uncerged_branches: true
+      
 
 # Deploy stage - Publish to JetBrains Marketplace
 deploy:jetbrains:
@@ -171,7 +171,7 @@ deploy:staging:
     - if: $CI_COMMIT_BRANCH == "develop"
       when: on_success
     - when: manual
-      allow_uncerged_branches: true
+      
 
 # Clean stage - Clean build artifacts
 clean:build:
