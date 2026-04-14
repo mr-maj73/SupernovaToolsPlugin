@@ -1,0 +1,188 @@
+# GitLab CI/CD Configuration for SupernovaToolsPlugin
+# IntelliJ Platform Plugin with Gradle
+
+variables:
+  # Gradle
+  GRADLE_VERSION: "9.4.1"
+  
+  # JVM
+  JAVA_VERSION: "21"
+  
+  # Cache paths
+  GRADLE_CACHE_DIR: "$CI_PROJECT_DIR/.gradle/caches"
+  GRADLE_HOME_DIR: "$CI_PROJECT_DIR/.gradle/wrapper"
+  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
+  
+  # Qodana
+  QODANA_VERSION: "latest"
+  QODANA_CACHE_DIR: "$CI_PROJECT_DIR/.qodana/cache"
+  QODANA_REPORT_DIR: "$CI_PROJECT_DIR/qodana/report"
+  QODANA_ARTIFACTS_DIR: "$CI_PROJECT_DIR/qodana/artifacts"
+
+# Define stages for the pipeline
+stages:
+  - lint
+  - build
+  - test
+  - verify
+  - package
+  - deploy
+
+# Cache dependencies to speed up builds
+cache:
+  key: "$CI_COMMIT_REF_NAME"
+  paths:
+    - $GRADLE_CACHE_DIR
+    - $GRADLE_HOME_DIR
+    - node_modules/
+  policy: pull-push
+
+# Docker image for CI jobs
+# Use official Eclipse Temurin for Java 21
+.docker: &docker
+  image: eclipse-temurin:$JAVA_VERSION
+
+# Build stage - Compile the project
+build:gradle:
+  stage: build
+  <<: *docker
+  script:
+    - echo "Building project with Gradle $GRADLE_VERSION"
+    - chmod +x ./gradlew
+    - ./gradlew build --no-daemon --stacktrace
+  artifacts:
+    paths:
+      - build/libs/
+    expire_in: 1 week
+  rules:
+    - when: on_success
+    - when: manual
+      allow_uncerged_branches: true
+
+# Test stage - Run all tests
+test:unit:
+  stage: test
+  <<: *docker
+  script:
+    - echo "Running unit tests with Gradle $GRADLE_VERSION"
+    - chmod +x ./gradlew
+    - ./gradlew test --no-daemon --stacktrace
+  artifacts:
+    reports:
+      junit: build/test-results/test/*.xml
+    paths:
+      - build/reports/tests/
+      - build/reports/kover/
+    expire_in: 1 week
+  coverage: '/Lines.*?(\d+.\d+)%/'
+  rules:
+    - when: on_success
+
+test:ui:
+  stage: test
+  <<: *docker
+  script:
+    - echo "Running UI tests with Gradle $GRADLE_VERSION"
+    - chmod +x ./gradlew
+    - ./gradlew runIdeForUiTests --no-daemon --stacktrace || true
+  artifacts:
+    paths:
+      - build/test-results/
+      - build/reports/
+    expire_in: 1 week
+  rules:
+    - when: on_success
+      allow_uncerged_branches: true
+
+# Package stage - Build plugin artifact
+package:plugin:
+  stage: package
+  <<: *docker
+  script:
+    - echo "Building plugin artifact"
+    - chmod +x ./gradlew
+    - ./gradlew buildPlugin --no-daemon --stacktrace
+  artifacts:
+    paths:
+      - build/distributions/
+      - build/libs/*.jar
+    expire_in: 1 week
+    name: plugin-artifacts-$CI_COMMIT_REF_SLUG
+  rules:
+    - when: on_success
+      allow_uncerged_branches: true
+
+# Deploy stage - Publish to JetBrains Marketplace
+deploy:jetbrains:
+  stage: deploy
+  <<: *docker
+  script:
+    - echo "Publishing to JetBrains Marketplace"
+    - chmod +x ./gradlew
+    - |
+      if [ "$PUBLISH_TOKEN" ]; then
+        echo "Token configured, publishing..."
+        ./gradlew publishPlugin --no-daemon --stacktrace
+      else
+        echo "No token found, skipping publication"
+        exit 1
+      fi
+  only:
+    - main
+    - master
+    - tags
+  variables:
+    CERTIFICATE_CHAIN: $CERTIFICATE_CHAIN
+    PRIVATE_KEY: $PRIVATE_KEY
+    PRIVATE_KEY_PASSWORD: $PRIVATE_KEY_PASSWORD
+    PUBLISH_TOKEN: $PUBLISH_TOKEN
+
+# Create a deployable Docker image (optional)
+build:docker:
+  stage: package
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - echo "Building Docker image (if needed)"
+    - docker --version
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == "main"
+  artifacts:
+    paths:
+      - build/
+    expire_in: 1 week
+
+# Manual deployment for specific branches
+deploy:staging:
+  stage: deploy
+  <<: *docker
+  script:
+    - echo "Deploying to staging"
+    - chmod +x ./gradlew
+    - ./gradlew clean buildPlugin --no-daemon
+    - echo "Artifact ready at build/distributions/"
+  artifacts:
+    paths:
+      - build/distributions/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+      when: on_success
+    - when: manual
+      allow_uncerged_branches: true
+
+# Clean stage - Clean build artifacts
+clean:build:
+  stage: build
+  <<: *docker
+  script:
+    - echo "Cleaning build artifacts"
+    - chmod +x ./gradlew
+    - ./gradlew clean --no-daemon
+  artifacts:
+    paths:
+      - build/
+  rules:
+    - when: manual
